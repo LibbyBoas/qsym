@@ -1,10 +1,10 @@
-from qsym.ast import Programmer
-from qsym.ast import ProgramVisitor
-from qsym.ast.Programmer import *
+from qsym.qafny_ast import Programmer
+from qsym.qafny_ast import ProgramVisitor
+from qsym.qafny_ast.Programmer import *
 from .TypeChecker import *
 from .CollectKind import *
 
-def joinRange(q1:QXQRange, qs:[QXQRange]):
+def joinRange(q1:QXQRange, qs:list[QXQRange]):
     tmp = []
     for i in range(len(qs)):
         elem = qs[i]
