@@ -8,6 +8,8 @@ from qsym.parsers.qafny_parser.ExpParser import ExpParser
 from qsym.parsers.qafny_parser.ProgramTransformer import ProgramTransformer 
 from qsym.qafny_ast.Programmer import *
 from qsym.sp_utils import _mk_num, _mk_bind,_mk_crange,_mk_call
+from qsym.analysis.CollectKind import CollectKind
+from qsym.analysis.TypeCollector import TypeCollector
 
 # Helper to create a Qafny Quantum Range: q[0, n)
 def _mk_qrange(q_name, start_val, end_var_name):
@@ -578,6 +580,47 @@ def main():
             for method in transpiler.methods:
                 rich.print(method)
             rich.print("-" * 30)
+        
+        #kind, type and typechecker pass
+        # CollectKind, build var env
+        rich.print("[bold cyan]--- Running CollectKind Pass ---[/]")
+        kind_collector = CollectKind()
+        for method in transpiler.methods:
+            method.accept(kind_collector)
+            
+        kenv = kind_collector.get_kenv()
+        rich.print(f"[white]Variables collected for {len(kenv)} methods.[/]")
+        for method_name, vars_dict in kenv.items():
+            rich.print(f"  [magenta]{method_name}[/]: {vars_dict}")
+
+        #TypeCollector, builds hoare contracts & bounds)
+        rich.print("\n[bold cyan]--- Running TypeCollector Pass ---[/]")
+        type_collector = TypeCollector(kenv)
+        for method in transpiler.methods:
+            method.accept(type_collector)
+            
+        # display the collected contracts
+        rich.print(f"[white]Contracts collected for {len(type_collector.env)} methods.[/]")
+        for method_name in type_collector.env.keys():
+            tenv = type_collector.get_tenv(method_name)
+            preds = type_collector.get_preds(method_name)
+            
+            rich.print(f"  [magenta]{method_name}[/]:")
+            rich.print(f"    Requires/Ensures Loci: {len(tenv)}")
+            rich.print(f"    Implicit Bounds Predicates: {len(preds)}")
+            
+            # print the actual bounds generated to prove it works
+            for p in preds:
+                # assuming your QXComp has left/op/right methods and a nice __str__
+                rich.print(f"      - {p.left()} {p.op()} {p.right()}")
+
+        rich.print("\n[bold green]Pipeline execution completed successfully![/]")
+
+    except Exception as e:
+        rich.print(f"\n[bold red]Compiler Pipeline Failed:[/]")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1) 
 
     except Exception as e:
         rich.print(f"[bold red]Transpilation Failed:[/]")

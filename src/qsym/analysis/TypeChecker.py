@@ -327,20 +327,20 @@ class TypeChecker(ProgramVisitor):
 
     #Need to deal with assertion
     #assertion might modify locus types
-    def visitAssert(self, ctx: Programmer.QXAssert):
+    def visitAssert(self, ctx: QXAssert):
         return ctx.spec().accept(self)
 
     #It is correct here
     #since KindCollections might only collect
     #variables in the beginning, and in the return clause
     #it will not recall variables inside a function.
-    def visitInit(self, ctx: Programmer.QXInit):
+    def visitInit(self, ctx: QXInit):
         y = ctx.binding().ID()
         kv = ctx.binding().type()
         self.kinds.update({y: kv})
         return True
 
-    def visitCast(self, ctx: Programmer.QXCast):
+    def visitCast(self, ctx: QXCast):
         ty = ctx.qty()
         if isinstance(ty, TyAA):
             vs = sameLocus(ctx.locus(), self.renv)
@@ -358,12 +358,12 @@ class TypeChecker(ProgramVisitor):
         self.renv = vs + [(newLoc, ty, num)]
         return True
 
-    def visitBind(self, ctx: Programmer.QXBind):
+    def visitBind(self, ctx: QXBind):
         if ctx.type() is not None:
             ctx.type().accept(self)
         return ctx.ID()
 
-    def visitQAssign(self, ctx: Programmer.QXQAssign):
+    def visitQAssign(self, ctx: QXQAssign):
         loc, ty, nenv, num = subLocusGen(ctx.locus(), self.renv)
      #   print("\nrenv in tc", self.renv)
         
@@ -376,7 +376,7 @@ class TypeChecker(ProgramVisitor):
         self.renv += [(loc, ty, num)]
         return True
 
-    def visitMeasure(self, ctx: Programmer.QXMeasure):
+    def visitMeasure(self, ctx: QXMeasure):
         re = subLocus(ctx.locus(), self.renv)
         if re is None:
             return False
@@ -388,7 +388,7 @@ class TypeChecker(ProgramVisitor):
         self.renv = [(ctx.locus(), nty, num)]+nenv
         return True
 
-    def visitCAssign(self, ctx: Programmer.QXCAssign):
+    def visitCAssign(self, ctx: QXCAssign):
         return True
     
     def _extract_locus_from_bexp(self, bexp):
@@ -399,7 +399,7 @@ class TypeChecker(ProgramVisitor):
             return bexp.locus()
         return []
 
-    def visitIf(self, ctx: Programmer.QXIf):
+    def visitIf(self, ctx: QXIf):
         if isinstance(ctx.bexp(), QXBool):
             old_env = self.renv
             for elem in ctx.stmts():
@@ -432,7 +432,7 @@ class TypeChecker(ProgramVisitor):
                 self.renv = [(floc,ty, num)] + nenv
             return True
 
-    def visitFor(self, ctx: Programmer.QXFor):
+    def visitFor(self, ctx: QXFor):
         lbound = ctx.crange().left()
         rbound = ctx.crange().right()
 
@@ -464,7 +464,7 @@ class TypeChecker(ProgramVisitor):
 
         return True
 
-    def visitCall(self, ctx: Programmer.QXCall):
+    def visitCall(self, ctx: QXCall):
         x = ctx.ID()
         kenv = self.kinds.get(x)
         tmpQVars = []
@@ -508,69 +508,69 @@ class TypeChecker(ProgramVisitor):
         self.renv = modEnv
         return True
 
-    def visitCNot(self, ctx: Programmer.QXCNot):
+    def visitCNot(self, ctx: QXCNot):
         return ctx.next().accept(self)
 
-    def visitEn(self, ctx: Programmer.TyEn):
+    def visitEn(self, ctx: TyEn):
         return ctx.flag().accept(self)
 
-    def visitQSpec(self, ctx: Programmer.QXQSpec):
+    def visitQSpec(self, ctx: QXQSpec):
         ctx.qty().accept(self)
         for elem in ctx.locus():
             elem.accept(self)
         return ctx.state().accept(self)
 
-    def visitTensor(self, ctx: Programmer.QXTensor):
+    def visitTensor(self, ctx: QXTensor):
         for elem in ctx.kets():
             elem.accept(self)
 
-    def visitSKet(self, ctx: Programmer.QXSKet):
+    def visitSKet(self, ctx: QXSKet):
         return ctx.vector().accept(self)
 
-    def visitVKet(self, ctx: Programmer.QXVKet):
+    def visitVKet(self, ctx: QXVKet):
         return ctx.vector().accept(self)
 
-    def visitSum(self, ctx: Programmer.QXSum):
+    def visitSum(self, ctx: QXSum):
         for elem in ctx.kets():
             elem.accept(self)
         ctx.amp().accept(self)
         for elem in ctx.sums():
             elem.accept(self)
 
-    def visitLogic(self, ctx: Programmer.QXLogic):
+    def visitLogic(self, ctx: QXLogic):
         ctx.left().accept(self)
         ctx.right().accept(self)
 
-    def visitBool(self, ctx: Programmer.QXComp):
+    def visitBool(self, ctx: QXComp):
         ctx.left().accept(self)
         ctx.right().accept(self)
         return ctx.op()
 
-    def visitCon(self, ctx: Programmer.QXCon):
+    def visitCon(self, ctx: QXCon):
         ctx.range().accept(self)
         return ctx.ID()
 
-    def visitQIndex(self, ctx: Programmer.QXQIndex):
+    def visitQIndex(self, ctx: QXQIndex):
         ctx.index().accept(self)
         return ctx.ID()
 
-    def visitQNot(self, ctx: Programmer.QXQNot):
+    def visitQNot(self, ctx: QXQNot):
         return ctx.next().accept(self)
 
-    def visitQComp(self, ctx: Programmer.QXQComp):
+    def visitQComp(self, ctx: QXQComp):
         ctx.left().accept(self)
         ctx.right().accept(self)
         ctx.index().accept(self)
 
-    def visitAll(self, ctx: Programmer.QXAll):
+    def visitAll(self, ctx: QXAll):
         ctx.bind().accept(self)
         ctx.next().accept(self)
 
-    def visitBin(self, ctx: Programmer.QXBin):
+    def visitBin(self, ctx: QXBin):
         ctx.left().accept(self)
         ctx.right().accept(self)
         return ctx.op()
 
-    def visitUni(self, ctx: Programmer.QXUni):
+    def visitUni(self, ctx: QXUni):
         ctx.next().accept(self)
         return ctx.op()

@@ -16,6 +16,8 @@ from qsym.parsers.qafny_parser.ProgramTransformer import ProgramTransformer
 from qsym.parsers.qafny_parser.ExpLexer import ExpLexer
 from qsym.parsers.qafny_parser.ExpParser import ExpParser
 from qsym.qafny_ast.PrettyPrinter import PrettyPrinter
+from qsym.analysis.CollectKind import CollectKind
+from qsym.analysis.TypeCollector import TypeCollector
 import graphviz
 import os
 import sys
@@ -25,7 +27,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # current_dir = os.path.dirname(os.path.abspath(__file__))
 # sys.path.append(os.path.join(current_dir, "PQASM"))
 
-from qsym.qafny_ast.Programmer import QXProgram, QXMethod, QXCU, QXSingle, QXNum, QXQAssign, QXQRange, QXCRange, QXAssert, QXBind, QXQTy, QXType, QXCall, QXBin, QXFor
+from qsym.qafny_ast.Programmer import QXProgram, QXMethod, QXCU, QXSingle, QXNum, QXQAssign, QXQRange, QXCRange, QXAssert, QXBind, QXQTy, QXType, QXCall, QXBin, QXFor, TyQ, TySingle
 
 # Ensure graphviz is in the PATH (for dag drawing)
 os.environ["PATH"] += os.pathsep + r"C:\Program Files\Graphviz\bin"
@@ -106,8 +108,12 @@ class QCtoQXProgrammer:
             self.QXQubits[qubit] = QXNum(i)
         self.visitedNodes = set()
         self.expList = []
-
-        bindings = [QXBind(id=qreg.name) for qreg in qc.qregs]
+        
+        bindings = []
+        bindings.append(QXBind(id="n", type=TySingle("nat")))
+        for qreg in qc.qregs:
+            size_flag = QXBind(id="n") 
+            bindings.append(QXBind(id=qreg.name, type=TyQ(flag=size_flag)))
         
         for node in self.dag.topological_op_nodes():
             self.dag_to_qx(node)
@@ -623,6 +629,50 @@ def main():
         for method in transpiler.methods:
             rich.print(method)
         rich.print("-" * 30)
+
+        rich.print("\n[bold cyan]--- Running CollectKind Pass ---[/]")
+        kind_collector = CollectKind()
+
+        for method in transpiler.methods:
+            kind_collector.preRegister(method)
+        
+        for method in transpiler.methods:
+            print(f"\n method: {method}")
+            method.accept(kind_collector)
+
+        if kind_collector.errors:
+            rich.print("[bold red]CollectKind encountered AST validation errors:[/]")
+            for err in kind_collector.errors:
+                rich.print(f"  - {err}")
+            
+        kenv = kind_collector.get_kenv()
+        rich.print(f"[white]Variables collected for {len(kenv)} methods.[/]")
+        for method_name, env_tuple in kenv.items():
+            
+            tenv, xenv = env_tuple
+            rich.print(f"  [magenta]{method_name}[/]:")
+            for var_name, var_type in tenv.items():
+                rich.print(f"    {var_name}: {var_type}")
+
+        rich.print("\n[bold cyan]--- Running TypeCollector Pass ---[/]")
+        type_collector = TypeCollector(kenv) 
+        for method in transpiler.methods:
+            method.accept(type_collector)
+
+        rich.print(f"[white]Contracts collected for {len(type_collector.env)} methods.[/]")
+        for method_name in type_collector.env.keys():
+            tenv = type_collector.get_tenv(method_name)
+            preds = type_collector.get_preds(method_name)
+            
+            rich.print(f"  [magenta]{method_name}[/]:")
+            rich.print(f"    Requires/Ensures Loci: {len(tenv)}")
+            rich.print(f"    Implicit Bounds Predicates: {len(preds)}")
+            
+            # Print the dynamic math bounds!
+            for p in preds:
+                rich.print(f"      - {p.left()} {p.op()} {p.right()}")
+
+        rich.print("\n[bold green]Frontend Pipeline execution completed successfully![/]")
 
     except Exception as e:
         rich.print(f"[bold red]Transpilation Failed:[/]")

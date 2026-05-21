@@ -15,8 +15,9 @@ def main():
 
     qc.append(c4u, [0, 1, 2, 3, 4])
 
-    decomposed_qc = qc.decompose()
+    dc = qc.decompose()
+    print(dc.draw())
     
-    return decomposed_qc
+    return dc
 
 final_circuit = main()

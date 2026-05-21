@@ -132,6 +132,7 @@ class TypeCollector(ProgramVisitor):
         self.tenv = []
         self.mkenv = []
         self.pred = []
+        print(f"\nself.fvar: {self.fvar}")
         self.fkenv = self.kenv.get(self.fvar)
 
         self.tenv += self._create_default_vars(ctx.conds(), QXRequires)
@@ -154,11 +155,41 @@ class TypeCollector(ProgramVisitor):
 
         return True
     
+    def _create_default_vars(self, conds: list[QXCond], cond_class):
+        """Unified method to generate default unconstrained variables."""
+        tmp = [var for var, kty in self.fkenv[0].items() if isinstance(kty, TyQ)]
+        vars = tmp.copy()
+
+        for elem in conds:
+            if isinstance(elem, cond_class):
+                if isinstance(elem.spec(), QXQSpec):
+                    for ran in elem.spec().locus():
+                        if ran.ID() in tmp:
+                            tmp.remove(ran.ID())
+                        else:
+                            return []  
+                elif isinstance(elem.spec(), QXBool):
+                    tmvars = findQVars(elem.spec(), vars)
+                    # Safely handle if findQVars returned None
+                    if tmvars and not subStrs(tmvars, tmp):
+                        for tmpelem in tmvars:
+                            if tmpelem in tmp:
+                                tmp.remove(tmpelem)
+
+        result = []
+        for var in tmp:
+            v = self.fkenv[0].get(var).flag()
+            locus = [QXQRange(var, QXCRange(QXNum(0), v))]
+            ty = TyEn(QXNum(0))  # default case 0
+            result.append((locus, ty))
+
+        return result
+    
     def _extract_bounds(self, node):
         """Extracts the base ID and bounds from either a full register or a slice."""
-        if hasattr(node, 'crange'): # It's a slice like q[i, j)
+        if hasattr(node, 'crange'): #a slice like q[i, j)
             return node.ID(), node.crange().left(), node.crange().right()
-        else: # It's a whole register like q1
+        else: #a whole register like q1
             ty = self.fkenv.get(node.ID())
             # Default bounds are 0 to the register's full flag length
             return node.ID(), QXNum(0), ty.flag()

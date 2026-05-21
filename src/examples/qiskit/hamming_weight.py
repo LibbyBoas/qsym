@@ -2,7 +2,7 @@ from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, transpile
 from qiskit.visualization import plot_histogram
 from qiskit_aer import Aer
 import sys
-from qsym.ast.ProgramVisitor import ProgramVisitor
+from qsym.qafny_ast.ProgramVisitor import ProgramVisitor
 from qsym.spec_api import *
 
 # check the functional of the function, check what they do on basis ket, 
