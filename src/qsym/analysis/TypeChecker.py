@@ -8,9 +8,9 @@ from qsym.qafny_ast.Programmer import *
 
 
 def compareQRange(q1: QXQRange, q2: QXQRange):
-    return (q1.ID() == q2.ID()
-            and compareAExp(q1.crange().left(),q2.crange().left())
-            and compareAExp(q1.crange().right(),q2.crange().right()))
+    return (q1.location() == q2.location()
+            and compareAExp(q1.crange().left(), q2.crange().left())
+            and compareAExp(q1.crange().right(), q2.crange().right()))
 
 def compareRangeLocus(q1: QXQRange, qs: list[QXQRange]):
     vs = []
@@ -324,6 +324,35 @@ class TypeChecker(ProgramVisitor):
 
     def renv(self):
         return self.renv
+    
+    def visitMethod(self, ctx: QXMethod):
+        func_name = str(ctx.ID())
+        self.renv = []
+        
+        for binding in ctx.bindings():
+            if isinstance(binding.type(), TyQ):
+                var_name = str(binding.ID())
+                
+                # grab the symbolic size
+                size_exp = binding.type().flag() 
+                
+                # create the locus: q[0:n]
+                crange = QXCRange(QXNum(0), size_exp)
+                locus = [QXQRange(var_name, crange)]
+                
+                # initial quantum type is Rank 0
+                qty = TyEn(QXNum(0)) 
+                
+                # add to renv: (locus, type, counter)
+                self.renv.append((locus, qty, self.counter))
+                self.counter += 1
+                
+        for stmt in ctx.stmts():
+            if not stmt.accept(self):
+                self.errors.append(f"TypeChecker Error: Statement failed verification in '{func_name}'.")
+                return False
+                
+        return True
 
     #Need to deal with assertion
     #assertion might modify locus types
@@ -364,8 +393,8 @@ class TypeChecker(ProgramVisitor):
         return ctx.ID()
 
     def visitQAssign(self, ctx: QXQAssign):
+        print("\nrenv in tc", self.renv)
         loc, ty, nenv, num = subLocusGen(ctx.locus(), self.renv)
-     #   print("\nrenv in tc", self.renv)
         
         if isinstance(ctx.exp(), QXSingle):
             ty = addOneType(ty)

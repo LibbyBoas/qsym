@@ -18,6 +18,7 @@ from qsym.parsers.qafny_parser.ExpParser import ExpParser
 from qsym.qafny_ast.PrettyPrinter import PrettyPrinter
 from qsym.analysis.CollectKind import CollectKind
 from qsym.analysis.TypeCollector import TypeCollector
+from qsym.analysis.TypeChecker import TypeChecker
 import graphviz
 import os
 import sys
@@ -671,6 +672,24 @@ def main():
             # Print the dynamic math bounds!
             for p in preds:
                 rich.print(f"      - {p.left()} {p.op()} {p.right()}")
+        
+        rich.print("\n[bold cyan]--- Running TypeChecker Pass ---[/]")
+        type_checker = TypeChecker(kenv, type_collector.env, {}, 0)
+
+        for method in transpiler.methods:
+            rich.print(f"  [white]Type-checking method: {method.ID()}[/]")
+            is_valid = method.accept(type_checker)
+            
+            if is_valid:
+                rich.print(f"  [bold green]✓ {method.ID()} passed type checking![/]")
+            else:
+                rich.print(f"  [bold red]✗ {method.ID()} failed type checking![/]")
+                
+        # If typechecker accumulates errors in a list like CollectKind did
+        if hasattr(type_checker, 'errors') and type_checker.errors:
+            rich.print("\n[bold red]TypeChecker Errors:[/]")
+            for err in type_checker.errors:
+                rich.print(f"  - {err}")
 
         rich.print("\n[bold green]Frontend Pipeline execution completed successfully![/]")
 
