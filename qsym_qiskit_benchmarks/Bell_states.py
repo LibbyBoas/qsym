@@ -11,10 +11,14 @@ q = QuantumRegister(2,'q')
 c = ClassicalRegister(2,'c')
 
 def firstBellState():
+    # requires { q[0, 2) : nor ↦ ⊗ i ∈ [0, 2) . |0⟩ }
+    # ensures  { c[0] == c[1] && (c[0] == 1 || c[0] == 0)}
     circuit = QuantumCircuit(q,c)
 
     circuit.h(q[0]) # Hadamard gate 
+    #assert { q[0] : had  ↦ ∑ k ∈ [0, 2) . 1/sqrt(2) | k ⟩ }
     circuit.cx(q[0],q[1]) # CNOT gate
+    # assert { q[0, 2) : en ↦ ∑ j ∈ [0, 2) . 1/sqrt(2) . ⊗ i ∈ [0, 2) . |j⟩ }
     circuit.measure(q,c) # Qubit Measurment
 
     print(circuit)
